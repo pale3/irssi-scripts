@@ -124,10 +124,7 @@ sub _spellcheck_ignore_channel
     if ($active){
       for my $ignored (@channels){
          $ignored =~ tr/ //ds; 
-         #print "setting: $ignored";
-         #print "active: $active";
          if ($active eq $ignored ){
-          #print "aktivan kanal je u ignore listi";
           return $ignored;
          }
       }
