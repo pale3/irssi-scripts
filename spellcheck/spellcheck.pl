@@ -10,15 +10,20 @@
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # General Public License for more details.
+#
+# NOTE: created workaround for printing suggestions
+# 1. "window is not stick anymore" 
+# 2. "window is unstick"
+# 3. "last window cant be hidden"
 
 use strict;
 use warnings;
 
 use vars qw($VERSION %IRSSI);
-use Irssi 20070804;
+use Irssi;
 use Text::Aspell;
 
-$VERSION = '0.6.1';
+$VERSION = '0.6.2';
 %IRSSI = (
     authors     => 'Jakub Wilk, Jakub Jankowski, Gabriel Pettier',
     name        => 'spellcheck',
@@ -129,22 +134,31 @@ sub spellcheck_key_pressed
 
     my $correction_window;
     my $window_height;
+    my $active = $win->{active}->{name};
 
     my $window_name = Irssi::settings_get_str('spellcheck_window_name');
     if ($window_name ne '') {
+        #Irssi::command("window stick " . $correction_window->{refnum} . " off");
         $correction_window = Irssi::window_find_name($window_name);
         $window_height = Irssi::settings_get_str('spellcheck_window_height');
     }
-
     # I know no way to *mark* misspelled words in the input line,
     # that's why there's no spellcheck_print_suggestions -
     # because printing suggestions is our only choice.
     return unless Irssi::settings_get_bool('spellcheck_enabled');
 
-    # hide correction window when message is sent
-    if ($key eq 10 && $correction_window) {
-        $correction_window->command("window hide $window_name");
-    }
+    # hide correction window when message is sent on key enter ot escape 
+	# ESC key 27 - issue as I hav meta l/r bidnig which produce esc secuence  
+	# RETURN  key 10  
+	# C+U  key 21
+    #print "AKTIV: $active"; NAPOKON
+	if ( ( $key eq 10 || $key eq 21 ) && $correction_window ){
+       if (! defined $active ){
+        $correction_window->command('window stick off');
+        #Irssi::command("window stick " . $correction_window->{refnum} . " off" );
+        $win->command("window hide $window_name");
+       }
+	}
 
     # don't bother unless pressed key is space or dot
     return unless (chr $key eq ' ' or chr $key eq '.');
@@ -167,18 +181,18 @@ sub spellcheck_key_pressed
     my $suggestions = spellcheck_check_word($lang, $word, 0);
 
     return unless defined $suggestions;
-
+    
     # show corrections window if hidden
     if ($correction_window) {
         $win->command("window show $window_name");
-        $correction_window->command('window stick off');
+        $correction_window->command("clear");
         $correction_window->command("window size $window_height");
-    } else {
+    } 
+    else {
         $correction_window = $win;
     }
 
     # we found a mistake, print suggestions
-
     $word =~ s/%/%%/g;
     my $color = Irssi::settings_get_str('spellcheck_word_color');
     if (scalar @$suggestions > 0) {
