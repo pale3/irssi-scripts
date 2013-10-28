@@ -18,7 +18,33 @@
 #  - "last window cant be hidden"
 # 2. added feature for dynamic window which will be destroyed upon 
 #    suggestion window closes
-    
+# 3. other:
+#  - settings for suggestion window to be dynamic/static/active
+#  - make them depend on exsitance of $suggestion_window
+#  
+# USAGE: 
+# there is two modes in which spellcheck opereates:
+# modes = 1. split window 
+#         2. active window 
+# 
+# to activate modes you must conform this settings as 
+# /set spellcheck_widnow_appearance <setting>
+# 
+# posible <settings> are:
+#  
+# static  = spellcheck window is created by user, and is displayed like split window, 
+#           here's how to do it:
+#         = /window new split 
+#         = /window name <speller>
+#         = /set spellcheck_window_name <speller>
+# 
+# dynamic = spellcheck window is dynamicly created upons wrong spelled word, and close 
+#           on ENTER or C-U. Relevant settings are
+#         = /set spellcheck_window_name <speller>
+# 
+# active  = if /set spellcheck_window_name <speller> do not exist then active win is used for 
+#            suggestions
+
 use strict;
 use warnings;
 
@@ -26,7 +52,7 @@ use vars qw($VERSION %IRSSI);
 use Irssi;
 use Text::Aspell;
 
-$VERSION = '0.6.3';
+$VERSION = '0.7.0';
 %IRSSI = (
     authors     => 'Jakub Wilk, Jakub Jankowski, Gabriel Pettier, Marko Rakamaric',
     name        => 'spellcheck',
@@ -89,7 +115,7 @@ sub _spellcheck_find_language
 {
     my ($network, $target) = @_;
     return Irssi::settings_get_str('spellcheck_default_language') unless (defined $network && defined $target);
-
+    
     # support !channels correctly
     $target = '!' . substr($target, 6) if ($target =~ /^\!/);
 
@@ -140,6 +166,7 @@ sub spellcheck_key_pressed
     my $active = $win->{active}->{name};
 
     my $window_name = Irssi::settings_get_str('spellcheck_window_name');
+    my $win_appear = Irssi::settings_get_str('spellcheck_window_appearance');
 
     if ($window_name ne '') {
         
@@ -157,10 +184,16 @@ sub spellcheck_key_pressed
 	# C+U  key 21
 	if ( ( $key eq 10 || $key eq 21 ) && $correction_window ){
         # do we have $active win defined
-        if (! defined $active ){
+        if (! defined $active && $win_appear eq 'dynamic' ){
 
           $correction_window->command('window stick off');
           $win->command("window close $correction_window->{refnum}");
+       }
+      
+        if (! defined $active && $win_appear eq 'static' ){
+      
+          $correction_window->command('window stick off');
+          $win->command("window hide $window_name");
        }
 	}
 
@@ -189,18 +222,27 @@ sub spellcheck_key_pressed
     if ( $window_name ne '' ){
         # use block if $window_name ne ''
         # then check if $correctin win is defiend
-        if ( ! defined $correction_window ){
+        return unless defined $win_appear;
+        if ( ! defined $correction_window && $win_appear eq 'dynamic' ){
          
          Irssi::command("window new split");
          Irssi::command("window name $window_name");
          Irssi::command("window size $window_height");
          $correction_window = Irssi::window_find_name($window_name);
-        
         }
-    }else { 
-        # othervise print correction in active channel
-        $correction_window = $win;
-    }
+
+        if ( defined $correction_window && $win_appear eq 'static' ){
+
+          $win->command("window show $window_name");
+          $correction_window->command("clear");
+          $correction_window->command("window size $window_height");
+        }
+
+        if ( ! defined $correction_window && $win_appear eq 'active' ){
+          # othervise print correction in active channel
+          $correction_window = $win;
+        }
+    }    
 
     # we found a mistake, print suggestions
     $word =~ s/%/%%/g;
@@ -262,6 +304,7 @@ Irssi::settings_add_str( 'spellcheck', 'spellcheck_languages', '');
 Irssi::settings_add_str( 'spellcheck', 'spellcheck_word_color', '%R');
 Irssi::settings_add_str( 'spellcheck', 'spellcheck_window_name', '<%s%>');
 Irssi::settings_add_str( 'spellcheck', 'spellcheck_window_height', 10);
+Irssi::settings_add_str( 'spellcheck', 'spellcheck_window_appearance', 'dynamic');
 
 Irssi::signal_add_first('gui key pressed', 'spellcheck_key_pressed');
 Irssi::signal_add_last('complete word', 'spellcheck_complete_word');
