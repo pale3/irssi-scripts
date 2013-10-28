@@ -11,11 +11,14 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # General Public License for more details.
 #
-# NOTE: created workaround for printing suggestions
-# 1. "window is not stick anymore" 
-# 2. "window is unstick"
-# 3. "last window cant be hidden"
-
+# NOTE: 
+# 1. created workaround for printing suggestions
+#  - "window is not stick anymore" 
+#  - "window is unstick"
+#  - "last window cant be hidden"
+# 2. added feature for dynamic window which will be destroyed upon 
+#    suggestion window closes
+    
 use strict;
 use warnings;
 
@@ -23,9 +26,9 @@ use vars qw($VERSION %IRSSI);
 use Irssi;
 use Text::Aspell;
 
-$VERSION = '0.6.2';
+$VERSION = '0.6.3';
 %IRSSI = (
-    authors     => 'Jakub Wilk, Jakub Jankowski, Gabriel Pettier',
+    authors     => 'Jakub Wilk, Jakub Jankowski, Gabriel Pettier, Marko Rakamaric',
     name        => 'spellcheck',
     description => 'checks for spelling errors using Aspell',
     license     => 'GPLv2',
@@ -137,8 +140,9 @@ sub spellcheck_key_pressed
     my $active = $win->{active}->{name};
 
     my $window_name = Irssi::settings_get_str('spellcheck_window_name');
+
     if ($window_name ne '') {
-        #Irssi::command("window stick " . $correction_window->{refnum} . " off");
+        
         $correction_window = Irssi::window_find_name($window_name);
         $window_height = Irssi::settings_get_str('spellcheck_window_height');
     }
@@ -148,15 +152,15 @@ sub spellcheck_key_pressed
     return unless Irssi::settings_get_bool('spellcheck_enabled');
 
     # hide correction window when message is sent on key enter ot escape 
-	# ESC key 27 - issue as I hav meta l/r bidnig which produce esc secuence  
+	# ESC key 27 -> issue as I have meta l/r bidnig which produce esc sequence
 	# RETURN  key 10  
 	# C+U  key 21
-    #print "AKTIV: $active"; NAPOKON
 	if ( ( $key eq 10 || $key eq 21 ) && $correction_window ){
-       if (! defined $active ){
-        $correction_window->command('window stick off');
-        #Irssi::command("window stick " . $correction_window->{refnum} . " off" );
-        $win->command("window hide $window_name");
+        # do we have $active win defined
+        if (! defined $active ){
+
+          $correction_window->command('window stick off');
+          $win->command("window close $correction_window->{refnum}");
        }
 	}
 
@@ -182,13 +186,19 @@ sub spellcheck_key_pressed
 
     return unless defined $suggestions;
     
-    # show corrections window if hidden
-    if ($correction_window) {
-        $win->command("window show $window_name");
-        $correction_window->command("clear");
-        $correction_window->command("window size $window_height");
-    } 
-    else {
+    if ( $window_name ne '' ){
+        # use block if $window_name ne ''
+        # then check if $correctin win is defiend
+        if ( ! defined $correction_window ){
+         
+         Irssi::command("window new split");
+         Irssi::command("window name $window_name");
+         Irssi::command("window size $window_height");
+         $correction_window = Irssi::window_find_name($window_name);
+        
+        }
+    }else { 
+        # othervise print correction in active channel
         $correction_window = $win;
     }
 
@@ -250,7 +260,7 @@ Irssi::settings_add_bool('spellcheck', 'spellcheck_enabled', 1);
 Irssi::settings_add_str( 'spellcheck', 'spellcheck_default_language', 'en_US');
 Irssi::settings_add_str( 'spellcheck', 'spellcheck_languages', '');
 Irssi::settings_add_str( 'spellcheck', 'spellcheck_word_color', '%R');
-Irssi::settings_add_str( 'spellcheck', 'spellcheck_window_name', '');
+Irssi::settings_add_str( 'spellcheck', 'spellcheck_window_name', '<%s%>');
 Irssi::settings_add_str( 'spellcheck', 'spellcheck_window_height', 10);
 
 Irssi::signal_add_first('gui key pressed', 'spellcheck_key_pressed');
