@@ -21,7 +21,8 @@
 # 3. other:
 #  - settings for suggestion window to be dynamic/static/active
 #  - make them depend on exsitance of $suggestion_window
-#  
+# 4. new feature spellcheck_ignore for ignoring specific channels
+#
 # USAGE: 
 # there is two modes in which spellcheck opereates:
 # modes = 1. split window 
@@ -44,6 +45,8 @@
 # 
 # active  = if /set spellcheck_window_name <speller> do not exist then active win is used for 
 #            suggestions
+# to ignore channels for completion, use for ex: 
+# /set spellcheck_ignore #chan1, #chan2, #chan3
 
 use strict;
 use warnings;
@@ -52,7 +55,7 @@ use vars qw($VERSION %IRSSI);
 use Irssi;
 use Text::Aspell;
 
-$VERSION = '0.7.0';
+$VERSION = '0.8.0';
 %IRSSI = (
     authors     => 'Jakub Wilk, Jakub Jankowski, Gabriel Pettier, Marko Rakamaric',
     name        => 'spellcheck',
@@ -109,6 +112,27 @@ sub spellcheck_check_word
         return \@result;
     }
     return;
+}
+
+# dodaj u ignore: #irssi, #gnome, #gentoo
+sub _spellcheck_ignore_channel
+{
+    my ($win) = @_;
+    my $active = $win->{active}->{name};
+    my @channels = split(/,/,Irssi::settings_get_str('spellcheck_ignore'));
+    
+    if ($active){
+      for my $ignored (@channels){
+         $ignored =~ tr/ //ds; 
+         #print "setting: $ignored";
+         #print "active: $active";
+         if ($active eq $ignored ){
+          #print "aktivan kanal je u ignore listi";
+          return $ignored;
+         }
+      }
+    return;
+    }
 }
 
 sub _spellcheck_find_language
@@ -213,6 +237,9 @@ sub spellcheck_key_pressed
     my ($word) = $inputline =~ /\s*([^\s]+)$/;
     defined $word or return;
 
+    my $ign = _spellcheck_ignore_channel($win);
+    return unless not defined $ign;
+
     my $lang = spellcheck_find_language($win);
 
     my $suggestions = spellcheck_check_word($lang, $word, 0);
@@ -305,6 +332,7 @@ Irssi::settings_add_str( 'spellcheck', 'spellcheck_word_color', '%R');
 Irssi::settings_add_str( 'spellcheck', 'spellcheck_window_name', '<%s%>');
 Irssi::settings_add_str( 'spellcheck', 'spellcheck_window_height', 10);
 Irssi::settings_add_str( 'spellcheck', 'spellcheck_window_appearance', 'dynamic');
+Irssi::settings_add_str( 'spellcheck', 'spellcheck_ignore', '');
 
 Irssi::signal_add_first('gui key pressed', 'spellcheck_key_pressed');
 Irssi::signal_add_last('complete word', 'spellcheck_complete_word');
