@@ -11,42 +11,23 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # General Public License for more details.
 #
-# NOTE: 
-# 1. created workaround for printing suggestions
-#  - "window is not stick anymore" 
-#  - "window is unstick"
-#  - "last window cant be hidden"
-# 2. added feature for dynamic window which will be destroyed upon 
-#    suggestion window closes
-# 3. other:
-#  - settings for suggestion window to be dynamic/static/active
-#  - make them depend on exsitance of $suggestion_window
-# 4. new feature spellcheck_ignore for ignoring specific channels
-#
 # USAGE: 
 # there is two modes in which spellcheck opereates:
 # modes = 1. split window 
 #         2. active window 
 # 
-# to activate modes you must conform this settings as 
-# /set spellcheck_widnow_appearance <setting>
-# 
+# to activate modes you must conform this settings as /set spellcheck_window_appearance <setting>
 # posible <settings> are:
 #  
-# static  = spellcheck window is created by user, and is displayed like split window, 
-#           here's how to do it:
+# static  = spellcheck window is created by user, and is displayed like split window, here's how to do it:
 #         = /window new split 
 #         = /window name <speller>
 #         = /set spellcheck_window_name <speller>
 # 
-# dynamic = spellcheck window is dynamicly created upons wrong spelled word, and close 
-#           on ENTER or C-U. Relevant settings are
+# dynamic = spellcheck window is dynamicly created upons wrong spelled word, and close on ENTER or C-U relevant settings are
 #         = /set spellcheck_window_name <speller>
 # 
-# active  = if /set spellcheck_window_name <speller> do not exist then active win is used for 
-#            suggestions
-# to ignore channels for completion, use for ex: 
-# /set spellcheck_ignore #chan1, #chan2, #chan3
+# active  = if /set spellcheck_window_name <speller> do not exist then active win is used for words suggestions
 
 use strict;
 use warnings;
@@ -55,13 +36,13 @@ use vars qw($VERSION %IRSSI);
 use Irssi;
 use Text::Aspell;
 
-$VERSION = '0.8.0';
+$VERSION = '0.9.0';
 %IRSSI = (
     authors     => 'Jakub Wilk, Jakub Jankowski, Gabriel Pettier, Marko Rakamaric',
     name        => 'spellcheck',
     description => 'checks for spelling errors using Aspell',
     license     => 'GPLv2',
-    url         => 'http://jwilk.net/software/irssi-spellcheck',
+    url         => 'https://github.com/pale3/irssi-scripts/tree/master/spellcheck'
 );
 
 my %speller;
@@ -114,7 +95,7 @@ sub spellcheck_check_word
     return;
 }
 
-# dodaj u ignore: #irssi, #gnome, #gentoo
+# add ignore channels: E.g #irssi, #gnome, #gentoo
 sub _spellcheck_ignore_channel
 {
     my ($win) = @_;
@@ -199,8 +180,8 @@ sub spellcheck_key_pressed
     # because printing suggestions is our only choice.
     return unless Irssi::settings_get_bool('spellcheck_enabled');
 
-    # hide correction window when message is sent on key enter ot escape 
-	# ESC key 27 -> issue as I have meta l/r bidnig which produce esc sequence
+    # hide correction window when message is sent on key enter or escape 
+	# ESC key 27 -> issue as I have meta l/r binding which produce esc sequence
 	# RETURN  key 10  
 	# C+U  key 21
 	if ( ( $key eq 10 || $key eq 21 ) && $correction_window ){
